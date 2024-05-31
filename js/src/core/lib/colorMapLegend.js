@@ -5,19 +5,14 @@ const _ = require('../../lodash');
 function getColorLegend(K3D, object) {
     let line;
     let text;
-    let textShadow;
-    let textGroup;
     let tick;
-    const margin = 5;
+    const margin = 10;
     let majorScale;
     const range = [];
     const intervals = [];
-    const texts = [];
-    let maxTextWidth = 0;
     let intervalOffset;
     let intervalCount = 0;
     const strokeWidth = 0.5;
-    let resizeListenerId = null;
     let i;
 
     if (!K3D.lastColorMap) {
@@ -57,27 +52,36 @@ function getColorLegend(K3D, object) {
     svg.setAttribute('viewBox', '0 0 100 100');
     svg.style.cssText = [
         'position: absolute',
-        'bottom: 10px',
+        'top: 10px',
         'left: 10px',
         'width: 30vh',
         'height: 30vh',
-        'max-width: 250px',
-        'max-height: 250px',
+        'max-width: 350px',
+        'max-height: 300px',
         'min-width: 150px',
         'min-height: 150px',
         'z-index: 16777271',
         'pointer-events: none',
-        'font-family: KaTeX_Main',
+        'font-family: Arial',
     ].join(';');
 
+    // Add title text
+    const title = document.createElementNS(svgNS, 'text');
+    title.setAttribute('x', '0');
+    title.setAttribute('y', '5');
+    title.setAttribute('font-size', '0.35em');
+    title.setAttribute('fill', 'black');
+    title.innerHTML = K3D.parameters.colorbarTitle;
+    svg.appendChild(title);
+    
     colorMapHelper.createSVGGradient(svg, `colormap${object.id}`, object.color_map.data);
 
     rect.setAttribute('stroke-width', strokeWidth.toString(10));
     rect.setAttribute('stroke-linecap', 'square');
     rect.setAttribute('stroke', 'black');
     rect.setAttribute('fill', `url(#colormap${object.id})`);
-    rect.setAttribute('width', (15 - margin).toString(10));
-    rect.setAttribute('height', (100 - margin * 2).toString(10));
+    rect.setAttribute('width', (20 - margin).toString(10));
+    rect.setAttribute('height', (110 - margin * 2).toString(10));
     rect.setAttribute('x', margin.toString(10));
     rect.setAttribute('y', margin.toString(10));
 
@@ -102,10 +106,8 @@ function getColorLegend(K3D, object) {
     }
 
     intervals.forEach((v) => {
-        textGroup = document.createElementNS(svgNS, 'g');
         line = document.createElementNS(svgNS, 'line');
         text = document.createElementNS(svgNS, 'text');
-        textShadow = document.createElementNS(svgNS, 'text');
 
         const y = margin + (100 - margin * 2) * (1.0 - (v - range[0]) / colorRange);
 
@@ -115,66 +117,25 @@ function getColorLegend(K3D, object) {
             tick = v.toFixed((majorScale.toString(10).split('.')[1] || '').length);
         }
 
-        line.setAttribute('x1', '13');
+        line.setAttribute('x1', '18');
         line.setAttribute('y1', y.toString(10));
-        line.setAttribute('x2', '17');
+        line.setAttribute('x2', '22');
         line.setAttribute('y2', y.toString(10));
         line.setAttribute('stroke-width', strokeWidth.toString(10));
         line.setAttribute('stroke', 'black');
         svg.appendChild(line);
 
-        text.setAttribute('x', '0');
-        text.setAttribute('y', '0');
+        text.setAttribute('x', '24');
+        text.setAttribute('y', y.toString(10));
         text.setAttribute('alignment-baseline', 'middle');
-        text.setAttribute('text-anchor', 'end');
-        text.setAttribute('font-size', '0.5em');
+        text.setAttribute('text-anchor', 'start');
+        text.setAttribute('font-size', '0.3em');
         text.setAttribute('fill', 'rgb(68, 68, 68)');
         text.innerHTML = tick;
-
-        textShadow.setAttribute('x', '0.5');
-        textShadow.setAttribute('y', '0.5');
-        textShadow.setAttribute('alignment-baseline', 'middle');
-        textShadow.setAttribute('text-anchor', 'end');
-        textShadow.setAttribute('font-size', '0.5em');
-        textShadow.setAttribute('fill', 'rgb(255, 255, 255)');
-        textShadow.innerHTML = tick;
-
-        textGroup.setAttribute('pos_y', y.toString(10));
-
-        textGroup.appendChild(textShadow);
-        textGroup.appendChild(text);
-
-        texts.push(textGroup);
-        svg.appendChild(textGroup);
+        svg.appendChild(text);
     });
 
     K3D.getWorld().targetDOMNode.appendChild(svg);
-
-    function tryPosLabels() {
-        if (K3D.getWorld().width < 10 || K3D.getWorld().height < 10) {
-            if (resizeListenerId === null) {
-                resizeListenerId = K3D.on(K3D.events.RESIZED, () => {
-                    tryPosLabels();
-                });
-            }
-        } else {
-            if (resizeListenerId !== null) {
-                K3D.off(K3D.events.RESIZED, resizeListenerId);
-                resizeListenerId = null;
-            }
-
-            maxTextWidth = texts.reduce((max, t) => Math.max(max, t.getBBox().width), 0);
-
-            texts.forEach((t) => {
-                const x = (maxTextWidth + 20).toString(10);
-                const y = t.getAttribute('pos_y');
-
-                t.setAttribute('transform', `translate(${x}, ${y})`);
-            });
-        }
-    }
-
-    tryPosLabels();
 
     K3D.colorMapNode = svg;
 
